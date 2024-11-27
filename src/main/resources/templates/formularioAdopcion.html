@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Formulario de Adopción</title>
+    <style>
+        .form-container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .form-header {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: bold;
+        }
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+<div class="form-container">
+    <div class="form-header">
+        <h1>Formulario de Adopción</h1>
+    </div>
+    <form th:action="@{/adopcion/{idPerro}/guardar(idPerro=${idPerro})}" method="post">
+        <div th:each="pregunta : ${preguntas}" class="form-group">
+            <label th:for="${'respuesta_' + pregunta.id_pregunta}" th:text="${pregunta.pregunta}"></label>
+            <textarea th:id="${'respuesta_' + pregunta.id_pregunta}" th:name="${'respuesta_' + pregunta.id_pregunta}" rows="3" required></textarea>
+        </div>
+        <button type="submit">Enviar Respuestas</button>
+    </form>
+</div>
+</body>
+</html>

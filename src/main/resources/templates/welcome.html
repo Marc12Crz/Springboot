@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Bienvenido</title>
+    <style>
+        .card-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-top: 20px;
+        }
+        .card {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 16px;
+            width: 200px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+        .card-img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card-container">
+    <div th:each="mascota : ${mascotas}" class="card">
+        <img th:src="${mascota.imagen}" alt="Imagen de mascota" class="card-img">
+        <h3 th:text="${mascota.nombre}">Nombre de la mascota</h3>
+        <p>Edad: <span th:text="${mascota.edad}">Edad de la mascota</span></p>
+        <p>Raza: <span th:text="${mascota.raza}">Raza de la mascota</span></p>
+        <p>Tamaño: <span th:text="${mascota.tamano}">Tamaño de la mascota</span></p>
+        <p>Sexo: <span th:text="${mascota.sexo}">Sexo de la mascota</span></p>
+        <button th:onclick="'location.href=\'/mascotas/' + ${mascota.idPerro} + '\''">Ver detalles</button>
+        <button class="chat-btn"
+                th:onclick="'location.href=\'/chat/' + ${mascota.albergue.idAlbergue} + '\''">
+            Chat con el Albergue/Persona
+        </button>
+
+    </div>
+</div>
+<a th:href="@{/donaciones}">
+    <button>Ir a Donaciones</button>
+</a>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Detalles de Mascota</title>
+    <style>
+        .detalle-container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .detalle-img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        .detalle-header {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+<div class="detalle-container">
+    <div class="detalle-header">
+        <h1 th:text="${mascota.nombre}">Nombre de la mascota</h1>
+    </div>
+    <img th:src="${mascota.imagen}" alt="Imagen de la mascota" class="detalle-img">
+    <p><strong>Edad:</strong> <span th:text="${mascota.edad}">Edad</span> años</p>
+    <p><strong>Raza:</strong> <span th:text="${mascota.raza}">Raza</span></p>
+    <p><strong>Tamaño:</strong> <span th:text="${mascota.tamano}">Tamaño</span></p>
+    <p><strong>Sexo:</strong> <span th:text="${mascota.sexo}">Sexo</span></p>
+    <p><strong>Vacunas completas:</strong> <span th:text="${mascota.vacunasCompletas ? 'Sí' : 'No'}">Vacunas</span></p>
+    <p><strong>Esterilizado:</strong> <span th:text="${mascota.esterilizado ? 'Sí' : 'No'}">Esterilizado</span></p>
+    <p><strong>Descripción:</strong> <span th:text="${mascota.descripcion}">Descripción</span></p>
+    <button th:onclick="'location.href=\'/adopcion/' + ${mascota.idPerro} + '/formulario\''">Adoptar</button>
+
+</div>
+</body>
+</html>

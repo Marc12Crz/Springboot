@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Donar Producto</title>
+</head>
+<body>
+<h1 th:text="${producto.nombreProducto}">Nombre del Producto</h1>
+<form action="/procesar_donacion" method="post">
+    <input type="hidden" name="idProducto" th:value="${producto.idProducto}">
+    <label for="albergue">Selecciona un Albergue:</label>
+    <select id="albergue" name="idAlbergue">
+        <option th:each="albergue : ${albergues}" th:value="${albergue.idAlbergue}" th:text="${albergue.nombre}">Nombre Albergue</option>
+    </select>
+    <label for="mensaje">Mensaje (opcional):</label>
+    <textarea id="mensaje" name="mensaje"></textarea>
+    <button type="submit">Confirmar Donación</button>
+</form>
+</body>
+</html>

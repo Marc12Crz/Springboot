@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Iniciar Sesión</title>
+</head>
+<body>
+<h1>Iniciar Sesión</h1>
+
+<form method="post" action="/login">
+    <div>
+        <label for="correo">Correo:</label>
+        <input type="email" id="correo" name="username" required>
+    </div>
+    <div>
+        <label for="contraseña">Contraseña:</label>
+        <input type="password" id="contraseña" name="password" required>
+    </div>
+    <div>
+        <button type="submit">Iniciar Sesión</button>
+    </div>
+</form>
+
+<div>
+    <a href="/oauth2/authorization/google">Iniciar sesión con Google</a>
+</div>
+
+</body>
+</html>
