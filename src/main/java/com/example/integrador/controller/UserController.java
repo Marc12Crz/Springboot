@@ -120,6 +120,107 @@ public class UserController {
 
         return "welcome";
     }
+    @GetMapping("/perfil")
+    public String verPerfil(Principal principal, Model model) {
+        String correo = null;
+
+        if (principal instanceof OAuth2AuthenticationToken) {
+            OAuth2AuthenticationToken authToken = (OAuth2AuthenticationToken) principal;
+            Map<String, Object> attributes = authToken.getPrincipal().getAttributes();
+            correo = (String) attributes.get("email");
+            System.out.println("Correo extraído de OAuth2: " + correo);
+        } else if (principal != null) {
+            correo = principal.getName();
+            System.out.println("Correo extraído del Principal: " + correo);
+        }
+
+        if (correo == null || correo.isEmpty()) {
+            model.addAttribute("error", "No se pudo obtener el correo del usuario.");
+            return "error";
+        }
+
+        User usuario = userRepository.findByCorreo(correo);
+        if (usuario == null) {
+            System.out.println("Usuario no encontrado en la base de datos para el correo: " + correo);
+            model.addAttribute("error", "Usuario no encontrado.");
+            return "error";
+        }
+
+        System.out.println("Usuario encontrado: " + usuario.getNombre());
+        model.addAttribute("usuario", usuario);
+        return "perfil";
+    }
+    @GetMapping("/editar-perfil")
+    public String mostrarFormularioEdicion(Principal principal, Model model) {
+        String correo = null;
+
+        // Verifica si el usuario está autenticado con OAuth2
+        if (principal instanceof OAuth2AuthenticationToken) {
+            OAuth2AuthenticationToken authToken = (OAuth2AuthenticationToken) principal;
+            Map<String, Object> attributes = authToken.getPrincipal().getAttributes();
+            correo = (String) attributes.get("email");
+        } else if (principal != null) {
+            correo = principal.getName();
+        }
+
+        System.out.println("Correo autenticado para edición: " + correo);
+
+        // Verifica si el correo es válido
+        if (correo == null || correo.isEmpty()) {
+            model.addAttribute("error", "No se pudo obtener el correo del usuario.");
+            return "error";
+        }
+
+        // Busca al usuario en la base de datos
+        User usuario = userRepository.findByCorreo(correo);
+        if (usuario == null) {
+            model.addAttribute("error", "Usuario no encontrado.");
+            return "error";
+        }
+
+        model.addAttribute("usuario", usuario);
+        return "editarPerfil";
+    }
+    @PostMapping("/editar-perfil")
+    public String editarPerfil(User usuarioActualizado, Principal principal, Model model) {
+        String correo = null;
+
+        // Obtén el correo del usuario autenticado
+        if (principal instanceof OAuth2AuthenticationToken) {
+            OAuth2AuthenticationToken authToken = (OAuth2AuthenticationToken) principal;
+            Map<String, Object> attributes = authToken.getPrincipal().getAttributes();
+            correo = (String) attributes.get("email");
+        } else if (principal != null) {
+            correo = principal.getName();
+        }
+
+        System.out.println("Correo autenticado en POST: " + correo);
+
+        if (correo == null || correo.isEmpty()) {
+            model.addAttribute("error", "No se pudo obtener el correo del usuario.");
+            return "error";
+        }
+
+        User usuario = userRepository.findByCorreo(correo);
+
+        if (usuario == null) {
+            model.addAttribute("error", "Usuario no encontrado.");
+            return "error";
+        }
+
+        // Actualiza los datos del usuario
+        usuario.setNombre(usuarioActualizado.getNombre());
+        usuario.setTelefono(usuarioActualizado.getTelefono());
+        usuario.setDireccion(usuarioActualizado.getDireccion());
+        usuario.setDistrito(usuarioActualizado.getDistrito());
+        usuario.setDepartamento(usuarioActualizado.getDepartamento());
+
+        userRepository.save(usuario);
+
+        return "redirect:/perfil";
+    }
+
+
 
 
 

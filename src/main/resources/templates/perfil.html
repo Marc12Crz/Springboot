@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Perfil de Usuario</title>
+</head>
+<body>
+<div>
+    <h1 th:text="'Perfil de ' + ${usuario.nombre}">Perfil</h1>
+    <p><strong>Correo:</strong> <span th:text="${usuario.correo}">correo</span></p>
+    <p><strong>Teléfono:</strong> <span th:text="${usuario.telefono}">teléfono</span></p>
+    <p><strong>Dirección:</strong> <span th:text="${usuario.direccion}">dirección</span></p>
+    <p><strong>Distrito:</strong> <span th:text="${usuario.distrito}">distrito</span></p>
+    <p><strong>Departamento:</strong> <span th:text="${usuario.departamento}">departamento</span></p>
+    <p><strong>Tipo de Usuario:</strong> <span th:text="${usuario.tipoUsuario}">tipoUsuario</span></p>
+</div>
+</body>
+</html>

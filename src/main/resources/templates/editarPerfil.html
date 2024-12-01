@@ -1,0 +1,18 @@
+<form th:action="@{/editar-perfil}" method="post">
+    <label for="nombre">Nombre:</label>
+    <input type="text" id="nombre" name="nombre" th:value="${usuario.nombre}" required><br>
+
+    <label for="telefono">Teléfono:</label>
+    <input type="text" id="telefono" name="telefono" th:value="${usuario.telefono}" required><br>
+
+    <label for="direccion">Dirección:</label>
+    <input type="text" id="direccion" name="direccion" th:value="${usuario.direccion}" required><br>
+
+    <label for="distrito">Distrito:</label>
+    <input type="text" id="distrito" name="distrito" th:value="${usuario.distrito}" required><br>
+
+    <label for="departamento">Departamento:</label>
+    <input type="text" id="departamento" name="departamento" th:value="${usuario.departamento}" required><br>
+
+    <button type="submit">Guardar Cambios</button>
+</form>
