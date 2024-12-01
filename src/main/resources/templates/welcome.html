@@ -26,7 +26,7 @@
     </style>
 </head>
 <body>
-
+<a th:href="@{/perfil}">ver perfil</a>
 <div class="card-container">
     <div th:each="mascota : ${mascotas}" class="card">
         <img th:src="${mascota.imagen}" alt="Imagen de mascota" class="card-img">
