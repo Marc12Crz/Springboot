@@ -1,74 +1,60 @@
 package com.example.integrador.security;
 
-import com.example.integrador.model.User;
-import com.example.integrador.repository.UserRepository;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 public class SecurityConfig {
 
     private final MyUserDetailsService myUserDetailsService;
-    private final UserRepository userRepository;
 
-    public SecurityConfig(MyUserDetailsService myUserDetailsService, UserRepository userRepository) {
+    public SecurityConfig(MyUserDetailsService myUserDetailsService) {
         this.myUserDetailsService = myUserDetailsService;
-        this.userRepository = userRepository;
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .authorizeHttpRequests(authorizeRequests -> authorizeRequests
-                        .requestMatchers("/", "/login", "/register", "/error", "/oauth2/**").permitAll()
+                .cors()
+                .and()
+                .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers("/", "/api/users/register", "/api/users/login", "/oauth2/**").permitAll()
                         .anyRequest().authenticated()
                 )
-                .formLogin(formLogin -> formLogin
-                        .loginPage("/login")
-                        .defaultSuccessUrl("/welcome", true)
-                        .failureUrl("/login?error=true")
-                        .permitAll()
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.ALWAYS) // Siempre crea una sesión
                 )
-                .oauth2Login(oauth2Login -> oauth2Login
-                        .loginPage("/login")
-                        .successHandler(oAuth2SuccessHandler(userRepository))
-                        .failureUrl("/login?error=true")
-                        .permitAll()
-                )
-                .logout(logout -> logout
-                        .logoutUrl("/logout")
-                        .logoutSuccessUrl("/login")
-                        .permitAll()
-                )
-                .csrf().disable();
+                .csrf().disable() // Desactiva CSRF para APIs REST
+                .addFilterBefore((request, response, chain) -> {
+                    // Logs para inspeccionar el contexto de seguridad
+                    if (SecurityContextHolder.getContext().getAuthentication() != null) {
+                        System.out.println("Autenticado: " +
+                                SecurityContextHolder.getContext().getAuthentication().getName());
+                    } else {
+                        System.out.println("SecurityContext es nulo o anónimo.");
+                    }
+                    chain.doFilter(request, response);
+                }, UsernamePasswordAuthenticationFilter.class)
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            System.out.println("Solicitud no autorizada para URL: " + request.getRequestURI());
+                            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "No autorizado");
+                        })
+                );
         return http.build();
-    }
-
-    @Bean
-    public AuthenticationSuccessHandler oAuth2SuccessHandler(UserRepository userRepository) {
-        return (request, response, authentication) -> {
-            OAuth2AuthenticationToken auth = (OAuth2AuthenticationToken) authentication;
-            String email = auth.getPrincipal().getAttribute("email");
-
-            // Verifica si el usuario existe en la base de datos
-            User user = userRepository.findByCorreo(email);
-
-            if (user == null || user.getDireccion() == null || user.getTelefono() == null) {
-                // Si el usuario no está completamente registrado, redirige al registro
-                response.sendRedirect("/register");
-            } else {
-                // Si ya está registrado, redirige a welcome
-                response.sendRedirect("/welcome");
-            }
-        };
     }
 
     @Bean
@@ -83,5 +69,17 @@ public class SecurityConfig {
                 .passwordEncoder(passwordEncoder())
                 .and()
                 .build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.addAllowedOrigin("*");
+        configuration.addAllowedMethod("*");
+        configuration.addAllowedHeader("*");
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 }
