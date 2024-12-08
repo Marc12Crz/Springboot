@@ -17,6 +17,16 @@ public class Albergue {
     private String departamento;
     private String distrito;
 
+    public String getDescripcion() {
+        return descripcion;
+    }
+
+    public void setDescripcion(String descripcion) {
+        this.descripcion = descripcion;
+    }
+
+    private String descripcion;
+
     @ManyToOne
     @JoinColumn(name = "id_usuario", nullable = false)
     private User usuario;

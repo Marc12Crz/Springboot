@@ -1,18 +1,13 @@
 package com.example.integrador.controller;
 
-import com.example.integrador.model.Adopcion;
-import com.example.integrador.model.PreguntaFormulario;
-import com.example.integrador.model.RespuestaFormulario;
-import com.example.integrador.model.User;
-import com.example.integrador.repository.AdopcionRepository;
-import com.example.integrador.repository.MascotaRepository;
-import com.example.integrador.repository.PreguntaFormularioRepository;
-import com.example.integrador.repository.RespuestaFormularioRepository;
-import com.example.integrador.repository.UserRepository;
+import com.example.integrador.model.*;
+import com.example.integrador.repository.*;
+import com.example.integrador.service.AdopcionService;
+import com.example.integrador.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
@@ -20,8 +15,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-@Controller
-@RequestMapping("/adopcion")
+@RestController
+@RequestMapping("/api/adopcion")
 public class AdopcionController {
 
     @Autowired
@@ -39,84 +34,89 @@ public class AdopcionController {
     @Autowired
     private MascotaRepository mascotaRepository;
 
-    @GetMapping("/{idPerro}/formulario")
-    public String mostrarFormularioAdopcion(@PathVariable Integer idPerro, Model model) {
+    @Autowired
+    private AlbergueRepository albergueRepository;
+    @Autowired
+    private AdopcionService adopcionService;
+    @Autowired
+    private UserService userService;
 
-        var mascota = mascotaRepository.findById(idPerro)
+    @GetMapping("/{idPerro}/formulario")
+    public ResponseEntity<?> obtenerPreguntasFormulario(@PathVariable Integer idPerro) {
+        Mascota mascota = mascotaRepository.findById(idPerro)
                 .orElseThrow(() -> new IllegalArgumentException("Mascota no encontrada"));
 
-
-        var albergue = mascota.getAlbergue();
-
+        Albergue albergue = mascota.getAlbergue();
 
         List<PreguntaFormulario> preguntas = preguntaFormularioRepository.findByAlbergueId(albergue.getIdAlbergue());
 
-
-        model.addAttribute("preguntas", preguntas);
-        model.addAttribute("idPerro", idPerro);
-
-        return "formularioAdopcion";
+        return ResponseEntity.ok(Map.of(
+                "preguntas", preguntas,
+                "idPerro", idPerro
+        ));
     }
 
     @PostMapping("/{idPerro}/guardar")
-    public String guardarRespuestasAdopcion(
+    public ResponseEntity<?> guardarRespuestasAdopcion(
             @PathVariable Integer idPerro,
-            @RequestParam Map<String, String> respuestas,
+            @RequestBody Map<String, String> respuestas,
             Principal principal) {
 
-
-        String correo = obtenerCorreoAutenticado(principal);
-
-        if (correo == null || correo.isEmpty()) {
-            throw new IllegalArgumentException("No se pudo determinar el correo del usuario autenticado.");
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("El usuario no está autenticado.");
         }
 
-
-        User user = userRepository.findByCorreo(correo);
-
-        if (user == null) {
-            throw new IllegalArgumentException("Usuario con correo " + correo + " no encontrado.");
+        User usuario = userRepository.findByCorreo(principal.getName());
+        if (usuario == null) {
+            return ResponseEntity.badRequest().body("Usuario no encontrado.");
         }
 
+        Mascota mascota = mascotaRepository.findById(idPerro)
+                .orElseThrow(() -> new IllegalArgumentException("Mascota no encontrada."));
 
         Adopcion adopcion = new Adopcion();
-        adopcion.setUsuario(user);
-        adopcion.setMascota(mascotaRepository.findById(idPerro)
-                .orElseThrow(() -> new IllegalArgumentException("Mascota no encontrada.")));
+        adopcion.setUsuario(usuario);
+        adopcion.setMascota(mascota);
         adopcion.setEstadoSolicitud(Adopcion.EstadoSolicitud.PENDIENTE);
         adopcion.setFechaSolicitud(new Date());
+        adopcionRepository.save(adopcion);
 
-
-        adopcion = adopcionRepository.save(adopcion);
-
-
-        for (Map.Entry<String, String> entry : respuestas.entrySet()) {
-            try {
+        try {
+            for (Map.Entry<String, String> entry : respuestas.entrySet()) {
                 Integer idPregunta = Integer.parseInt(entry.getKey().replace("respuesta_", ""));
+                PreguntaFormulario pregunta = preguntaFormularioRepository.findById(idPregunta)
+                        .orElseThrow(() -> new IllegalArgumentException("Pregunta no encontrada."));
+
                 RespuestaFormulario respuesta = new RespuestaFormulario();
                 respuesta.setAdopcion(adopcion);
-                respuesta.setPregunta(preguntaFormularioRepository.findById(idPregunta)
-                        .orElseThrow(() -> new IllegalArgumentException("Pregunta no encontrada.")));
+                respuesta.setPregunta(pregunta);
                 respuesta.setRespuesta(entry.getValue());
+
                 respuestaFormularioRepository.save(respuesta);
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("El formato de las claves de las respuestas es incorrecto.", e);
             }
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().body("Error en el formato de las respuestas.");
         }
 
-        return "adopcionExitosa";
+        return ResponseEntity.ok("Formulario de adopción guardado con éxito.");
     }
+    @GetMapping("/solicitudes")
+    public ResponseEntity<?> obtenerSolicitudesDelUsuario(Principal principal) {
+        try {
+            String correo = userService.getCorreoFromPrincipal(principal);
+            User usuario = userService.obtenerPorCorreo(correo);
 
-    private String obtenerCorreoAutenticado(Principal principal) {
-        if (principal instanceof OAuth2AuthenticationToken) {
+            // Verifica el idUsuario
+            System.out.println("Usuario autenticado: " + usuario.getId() + " - " + usuario.getCorreo());
 
-            OAuth2AuthenticationToken oauth2Token = (OAuth2AuthenticationToken) principal;
-            Map<String, Object> attributes = oauth2Token.getPrincipal().getAttributes();
-            return (String) attributes.get("email");
-        } else {
-            return principal.getName();
+            List<Adopcion> solicitudes = adopcionService.obtenerSolicitudesAdopcion(usuario.getId());
+            return ResponseEntity.ok(solicitudes);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Error al obtener las solicitudes: " + e.getMessage());
         }
     }
+
 
 
 }

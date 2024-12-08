@@ -5,15 +5,20 @@ import com.example.integrador.model.User;
 import com.example.integrador.repository.MascotaRepository;
 import com.example.integrador.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -31,17 +36,42 @@ public class UserController {
         this.passwordEncoder = new BCryptPasswordEncoder();
         this.mascotaRepository = mascotaRepository;
     }
+    @GetMapping("/register")
+    public ResponseEntity<?> mostrarFormularioRegistro(@AuthenticationPrincipal OAuth2AuthenticationToken principal) {
+        if (principal != null) {
+            Map<String, Object> atributos = principal.getPrincipal().getAttributes();
+            Map<String, String> usuario = Map.of(
+                    "nombre", atributos.get("name").toString(),
+                    "correo", atributos.get("email").toString()
+            );
+            return ResponseEntity.ok(usuario);
+        }
+        return ResponseEntity.ok(Map.of());
+    }
 
     @PostMapping("/register")
-    public ResponseEntity<?> registerUser(@RequestBody User user) {
-        if (userRepository.findByCorreo(user.getCorreo()) != null) {
+    public ResponseEntity<?> registrarUsuario(@RequestBody Map<String, String> datosUsuario) {
+        if (userRepository.findByCorreo(datosUsuario.get("correo")) != null) {
             return ResponseEntity.badRequest().body("El correo ya está registrado.");
         }
-
-        user.setContraseña(passwordEncoder.encode(user.getContraseña()));
-        userRepository.save(user);
-        return ResponseEntity.ok("Usuario registrado con éxito.");
+        User nuevoUsuario = new User();
+        nuevoUsuario.setNombre(datosUsuario.get("nombre"));
+        nuevoUsuario.setCorreo(datosUsuario.get("correo"));
+        nuevoUsuario.setContraseña(passwordEncoder.encode(datosUsuario.get("contraseña")));
+        nuevoUsuario.setDireccion(datosUsuario.get("direccion"));
+        nuevoUsuario.setTelefono(datosUsuario.get("telefono"));
+        nuevoUsuario.setTipoUsuario(datosUsuario.get("tipo_usuario"));
+        nuevoUsuario.setDepartamento(datosUsuario.get("departamento"));
+        nuevoUsuario.setDistrito(datosUsuario.get("distrito"));
+        userRepository.save(nuevoUsuario);
+        return ResponseEntity.ok("Usuario registrado exitosamente.");
     }
+
+    @GetMapping("/login")
+    public ResponseEntity<?> mostrarFormularioLogin() {
+        return ResponseEntity.ok("API de inicio de sesión listo");
+    }
+
 
     @PostMapping("/login")
     public ResponseEntity<?> loginUser(@RequestBody Map<String, String> credentials, HttpServletRequest request) {
@@ -54,12 +84,12 @@ public class UserController {
             return ResponseEntity.status(401).body("Correo o contraseña incorrectos.");
         }
 
-        // Configurar el SecurityContext con el correo como principal
+
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(correo, null, List.of());
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        // Almacenar el contexto en la sesión
+
         request.getSession().setAttribute("SPRING_SECURITY_CONTEXT", SecurityContextHolder.getContext());
 
         System.out.println("Login exitoso: " + user.getCorreo());
@@ -77,43 +107,34 @@ public class UserController {
 
     @GetMapping("/welcome")
     public ResponseEntity<?> welcome(Principal principal) {
-        String correo = null;
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
-        // Verificar el tipo de autenticación y extraer el correo
+        String email = null;
+        User user = null;
+
         if (principal instanceof OAuth2AuthenticationToken) {
-            OAuth2AuthenticationToken authToken = (OAuth2AuthenticationToken) principal;
-            Map<String, Object> attributes = authToken.getPrincipal().getAttributes();
-            correo = (String) attributes.get("email");
-            System.out.println("Correo extraído de OAuth2: " + correo);
-        } else if (principal != null) {
-            correo = principal.getName();
-            System.out.println("Correo extraído del principal: " + correo);
+            OAuth2AuthenticationToken oauthToken = (OAuth2AuthenticationToken) principal;
+            email = oauthToken.getPrincipal().getAttribute("email");
+        } else {
+            email = principal.getName(); // For non-OAuth2 logins
         }
 
-        if (correo == null) {
-            System.out.println("El usuario no está autenticado.");
-            return ResponseEntity.status(401).body("No estás autenticado.");
-        }
+        user = userRepository.findByCorreo(email.toLowerCase());
 
-        // Buscar el usuario en la base de datos
-        User user = userRepository.findByCorreo(correo);
         if (user == null) {
-            System.out.println("Usuario no encontrado en la base de datos para el correo: " + correo);
-            return ResponseEntity.status(404).body("Usuario no encontrado.");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
 
-        // Si es un albergue, redirigir a Django
-        if ("albergue".equalsIgnoreCase(user.getTipoUsuario())) {
-            String redireccion = "Redirigir a la gestión de mascotas en Django.";
-            System.out.println("Redirigiendo para el usuario tipo albergue: " + correo);
-            return ResponseEntity.ok(redireccion);
-        }
-
-        // Si es un adoptante, listar las mascotas según su departamento
         List<Mascota> mascotas = mascotaRepository.findByDepartamento(user.getDepartamento());
-        System.out.println("Mascotas encontradas para el usuario: " + correo + ", cantidad: " + mascotas.size());
+        if (mascotas.isEmpty()) {
+            return ResponseEntity.ok(Collections.emptyMap());
+        }
+
         return ResponseEntity.ok(mascotas);
     }
+
 
 
     @GetMapping("/perfil")
@@ -163,6 +184,7 @@ public class UserController {
         usuario.setDireccion(usuarioActualizado.getDireccion());
         usuario.setDistrito(usuarioActualizado.getDistrito());
         usuario.setDepartamento(usuarioActualizado.getDepartamento());
+        usuario.setImagen(usuarioActualizado.getImagen());
 
         userRepository.save(usuario);
         return ResponseEntity.ok("Perfil actualizado con éxito.");
@@ -182,5 +204,30 @@ public class UserController {
         System.out.println("Principal es nulo o no válido");
         return null;
     }
+
+    @GetMapping("/logout")
+    public ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response) {
+        try {
+            // Invalidar la sesión
+            request.getSession().invalidate();
+
+            // Limpiar el SecurityContext
+            SecurityContextHolder.clearContext();
+
+            // Log de sesión cerrada
+            System.out.println("Sesión cerrada correctamente");
+
+            // Devolver URL para redireccionamiento del cliente
+            return ResponseEntity.ok(Map.of("message", "Sesión cerrada con éxito.", "redirectUrl", "http://localhost:3000/login"));
+        } catch (Exception e) {
+            System.out.println("Error al cerrar la sesión: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error al cerrar sesión.");
+        }
+    }
+
+
+
+
+
 
 }

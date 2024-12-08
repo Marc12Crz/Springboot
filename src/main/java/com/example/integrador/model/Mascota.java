@@ -8,6 +8,7 @@ public class Mascota {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_perro") // Asegúrate de que coincide con el nombre de la columna en la base de datos
     private Integer idPerro;
 
     @Column(nullable = false)

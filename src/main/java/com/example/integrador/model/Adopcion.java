@@ -35,6 +35,17 @@ public class Adopcion {
     @Column(columnDefinition = "TEXT")
     private String motivoAdopcion;
 
+    public String getRazon() {
+        return razon;
+    }
+
+    public void setRazon(String razon) {
+        this.razon = razon;
+    }
+
+    @Column(name = "razon", columnDefinition = "TEXT")
+    private String razon; // Rellenar solo si estadoSolicitud es RECHAZADA
+
     private Boolean responsableFinanciero;
     // Getters y Setters
 

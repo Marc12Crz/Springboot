@@ -1,6 +1,10 @@
 package com.example.integrador.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PastOrPresent;
+
 import java.util.Date;
 
 @Entity
@@ -19,11 +23,16 @@ public class Donacion {
     @JoinColumn(name = "id_producto", nullable = false)
     private Producto producto;
 
+    @NotNull
+    @Min(1)
     private Integer cantidad;
 
-    @Temporal(TemporalType.DATE)
+    @Temporal(TemporalType.TIMESTAMP)
+    @PastOrPresent
     private Date fecha_donacion;
 
+    @NotNull
+    @Min(0)
     private Double monto_total;
 
     @ManyToOne

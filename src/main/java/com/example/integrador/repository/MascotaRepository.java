@@ -12,5 +12,7 @@ public interface MascotaRepository extends JpaRepository<Mascota, Integer> {
 
     @Query("SELECT m FROM Mascota m WHERE m.albergue.departamento = :departamento")
     List<Mascota> findByDepartamento(@Param("departamento") String departamento);
+
+    List<Mascota> findByAlbergueIdAlbergue(Integer idAlbergue);
 }
 

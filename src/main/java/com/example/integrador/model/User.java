@@ -17,6 +17,16 @@ public class User {
     private String departamento;
     private String distrito;
 
+    public String getImagen() {
+        return imagen;
+    }
+
+    public void setImagen(String imagen) {
+        this.imagen = imagen;
+    }
+
+    private String imagen;
+
     // Getters y Setters
     public Long getId() {
         return id;

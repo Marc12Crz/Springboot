@@ -33,12 +33,10 @@ public class ChatController {
     @GetMapping("/{idAlbergue}")
     public String mostrarChat(@PathVariable Long idAlbergue, Model model, Principal principal) {
         User user = validarUsuarioAutenticado(principal);
-
-        // Obtener el albergue por su ID
+        
         Albergue albergue = albergueRepository.findById(idAlbergue)
                 .orElseThrow(() -> new IllegalArgumentException("Albergue no encontrado."));
 
-        // Recuperar mensajes del chat
         List<Chat> mensajes = chatRepository.findByUsuarioAndAlbergue(user.getId(), idAlbergue);
 
         model.addAttribute("mensajes", mensajes);

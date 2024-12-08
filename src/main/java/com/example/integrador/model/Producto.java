@@ -10,6 +10,9 @@ public class Producto {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int idProducto;
 
+
+
+    private String imagen;
     @Column(length = 100)
     private String nombreProducto;
 
@@ -17,6 +20,14 @@ public class Producto {
     private String descripcionProducto;
 
     private double precio;
+
+    public String getImagen() {
+        return imagen;
+    }
+
+    public void setImagen(String imagen) {
+        this.imagen = imagen;
+    }
 
     // Getters y Setters
     public int getIdProducto() {

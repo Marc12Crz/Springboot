@@ -10,11 +10,20 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Map;
 
 @Configuration
 public class SecurityConfig {
@@ -31,18 +40,38 @@ public class SecurityConfig {
                 .cors()
                 .and()
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/", "/api/users/register", "/api/users/login", "/oauth2/**").permitAll()
+                        .requestMatchers("/api/mascotas/**").permitAll()  // Permite acceso sin autenticación a todas las rutas de mascotas
+                        .requestMatchers("/", "/api/users/register", "/api/users/login", "/api/albergues", "/oauth2/**", "/login", "/api/donaciones/**","/api/donaciones/solicitudes","/api/donaciones/guardar").permitAll()
+                        .requestMatchers("/api/adopcion/**").authenticated()
                         .anyRequest().authenticated()
                 )
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.ALWAYS) // Siempre crea una sesión
+
+
+                .oauth2Login(oauth2 -> oauth2
+                        .loginPage("/login")  // Página de login personalizada, si es necesario
+                        .defaultSuccessUrl("http://localhost:5173/welcome", true)// Redirigir a la página de bienvenida después del login exitoso
+                        .failureUrl("/login?error=true") // URL de error si la autenticación falla
                 )
-                .csrf().disable() // Desactiva CSRF para APIs REST
+                .logout(logout -> logout
+                        .logoutUrl("/api/users/logout")
+                        .invalidateHttpSession(true)
+                        .deleteCookies("JSESSIONID")
+                        .logoutSuccessHandler((request, response, authentication) -> {
+                            SecurityContextHolder.clearContext();  // Clear the security context
+                            response.setStatus(HttpServletResponse.SC_OK);
+                            response.getWriter().write("{\"logout\":\"success\"}");
+                            response.getWriter().flush();
+                        })
+                )
+
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)  // Change this from ALWAYS to IF_REQUIRED
+                )
+
+                .csrf().disable()
                 .addFilterBefore((request, response, chain) -> {
-                    // Logs para inspeccionar el contexto de seguridad
                     if (SecurityContextHolder.getContext().getAuthentication() != null) {
-                        System.out.println("Autenticado: " +
-                                SecurityContextHolder.getContext().getAuthentication().getName());
+                        System.out.println("Autenticado: " + SecurityContextHolder.getContext().getAuthentication().getName());
                     } else {
                         System.out.println("SecurityContext es nulo o anónimo.");
                     }
@@ -74,12 +103,43 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.addAllowedOrigin("*");
+        configuration.addAllowedOriginPattern("*");
         configuration.addAllowedMethod("*");
         configuration.addAllowedHeader("*");
-
+        configuration.setAllowCredentials(true);
+        configuration.addExposedHeader("Authorization");
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
+    public class CustomOAuth2UserService extends DefaultOAuth2UserService {
+        @Override
+        public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
+            OAuth2User user = super.loadUser(userRequest);
+            Map<String, Object> attributes = user.getAttributes();
+
+            // Puedes procesar atributos adicionales aquí, como el correo y nombre
+            String email = (String) attributes.get("email");
+            String name = (String) attributes.get("name");
+
+            // Agrega lógica adicional si necesitas guardar datos o validar el usuario
+            return new DefaultOAuth2User(
+                    user.getAuthorities(),
+                    attributes,
+                    "sub" // O cualquier clave única proporcionada por Google
+            );
+        }
+    }
+
+    @Bean
+    public OAuth2UserService<OAuth2UserRequest, OAuth2User> customOAuth2UserService() {
+        return new CustomOAuth2UserService();
+    }
+    @Bean
+    public AuthenticationFailureHandler customAuthenticationFailureHandler() {
+        return (request, response, exception) -> {
+            response.sendRedirect("/login?error=true&message=" + exception.getMessage());
+        };
+    }
+
 }
